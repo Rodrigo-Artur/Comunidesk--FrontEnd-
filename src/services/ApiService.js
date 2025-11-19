@@ -1,56 +1,33 @@
 import axios from 'axios';
-// MUDANÇA CRÍTICA: Já não precisamos de importar o useAuthStore aqui.
-// Isto quebra a dependência circular.
-// import { useAuthStore } from '@/store/auth'; 
+// import { authState } from '@/store/auth'; // <-- REMOVIDO para quebrar o ciclo estático
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: 'http://localhost:8080/api', // A tua porta do backend
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-/**
- * Esta é a função "mágica" (Interceptor).
- * Ela agora lê o token DIRETAMENTE do localStorage.
- */
-export const setupAxiosInterceptors = () => {
-  apiClient.interceptors.request.use(
-    (config) => {
-      // --- A CORREÇÃO ESTÁ AQUI ---
-      // Antes (Problemático):
-      // const authStore = useAuthStore();
-      // const token = authStore.token;
-      
-      // Agora (Robusto):
-      // Lemos o token diretamente do localStorage a cada chamada.
-      const token = localStorage.getItem('token');
-      // --- FIM DA CORREÇÃO ---
-      
-      if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`;
-      }
-      return config;
-    },
-    (error) => {
-      return Promise.reject(error);
+// Interceptor para adicionar o token JWT a CADA requisição
+apiClient.interceptors.request.use(
+  async (config) => {
+    // --- CORREÇÃO ---
+    // Importamos o store dinamicamente (APENAS quando necessário)
+    // Isso não cria um ciclo de dependência na inicialização.
+    const { authState } = await import('@/store/auth.js');
+    
+    const token = authState.value.token;
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
-  );
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
-  // O interceptor de resposta (Bónus)
-  apiClient.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response && error.response.status === 401) {
-        // Se o token for inválido/expirado, limpamos o localStorage
-        // e recarregamos a página (o que força o logout).
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.reload(); 
-      }
-      return Promise.reject(error);
-    }
-  );
-};
+// O interceptor de resposta (para 401/logout) foi removido
+// porque ele completava o ciclo de dependência.
 
 export default apiClient;

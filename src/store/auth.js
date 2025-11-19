@@ -1,72 +1,98 @@
- /* eslint-disable */
-
-import { defineStore } from 'pinia';
+import { ref } from 'vue';
 import AuthService from '@/services/AuthService';
-import apiClient from '@/services/ApiService'; // Importamos o apiClient para o caso de o token expirar
 
-export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    // O estado inicial vem do localStorage, se existir
-    token: localStorage.getItem('token') || null,
-    user: JSON.parse(localStorage.getItem('user')) || null,
-  }),
-  getters: {
-    // A NavBar e o Router usam isto para saber se estamos logados
-    isAuthenticated: (state) => !!state.token,
-  },
-  actions: {
-    async login(credentials) {
-      try {
-        const response = await AuthService.login(credentials); // Chama o Arquivo 2 (que chama o backend real)
-        
-        // --- MUDANÇA CRÍTICA: TRADUÇÃO DA RESPOSTA ---
-        // Antes (Mock): const { token, user } = response.data;
-        
-        // Agora (Backend Real, conforme Guia 3.3):
-        // Recebemos a resposta "plana" do backend.
-        const { token, id, nome, email } = response.data;
-        
-        // 1. Validamos se recebemos o token
-        if (!token) {
-          throw new Error("Token não recebido do servidor");
-        }
-        
-        // 2. Construímos o objeto 'user' que o nosso frontend espera
-        const user = {
-          id: id,
-          name: nome, // Traduzimos 'nome' (backend) para 'name' (frontend)
-          email: email
-        };
-        // --- FIM DA MUDANÇA ---
-        
-        // 3. Armazenamos no estado do Pinia
-        this.token = token;
-        this.user = user;
-        
-        // 4. Armazenamos no localStorage para persistir o login
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        
-        return true; // Sucesso
-        
-      } catch (error) {
-        console.error('Erro na ação de login (authStore):', error);
-        // Propaga o erro para o LoginView.vue o poder exibir
-        if (error.response && error.response.data) {
-          throw new Error(error.response.data.message || 'Email ou palavra-passe inválidos');
-        }
-        throw new Error('Não foi possível conectar ao servidor.');
-      }
-    },
-    
-    logout() {
-      // Limpa o estado e o localStorage
-      this.token = null;
-      this.user = null;
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      // O interceptor do ApiService (Arquivo 1) também usa isto
-      // para limpar o header de autorização em futuras chamadas.
-    },
-  },
+// Função segura para ler e fazer parse do 'user'
+function getSafeUserFromStorage() {
+  const userString = localStorage.getItem('user');
+  if (!userString || userString === 'undefined' || userString === 'null') {
+    localStorage.removeItem('user'); 
+    return null;
+  }
+  try {
+    return JSON.parse(userString);
+  } catch (e) {
+    console.error("Falha ao fazer parse do 'user' no localStorage", e);
+    localStorage.removeItem('user');
+    return null;
+  }
+}
+
+// Estado reativo
+const user = ref(getSafeUserFromStorage()); 
+const token = ref(localStorage.getItem('token') || null);
+const isAuthenticated = ref(!!token.value);
+
+export const authState = ref({
+  user: user.value,
+  token: token.value,
+  isAuthenticated: isAuthenticated.value,
+});
+
+async function getRouter() {
+  const routerModule = await import('@/router');
+  return routerModule.default;
+}
+
+// Ações
+export const login = async (credentials) => {
+  // credentials é: { login: "...", senha: "..." }
+  
+  // 1. Faz a chamada de login
+  const response = await AuthService.login(credentials);
+  
+  // 2. O backend (LoginResponseDTO) retorna SÓ o token
+  const newToken = response.data.token; 
+
+  // --- MUDANÇA CRUCIAL ---
+  // O backend não nos devolve o objeto 'user', por isso
+  // temos de o construir a partir dos 'credentials' que já temos.
+  // O seu backend não suporta 'nome' ou 'email', por isso só temos o 'login'.
+  const loggedInUser = {
+    login: credentials.login 
+    // Não guardamos a senha (credentials.senha) por segurança
+  };
+  
+  // 3. Guardamos o token E o nosso objeto 'user' construído
+  localStorage.setItem('token', newToken);
+  localStorage.setItem('user', JSON.stringify(loggedInUser));
+
+  // 4. Atualizamos o estado global
+  authState.value = { token: newToken, user: loggedInUser, isAuthenticated: true };
+  // --- FIM DA MUDANÇA ---
+
+  const router = await getRouter();
+  router.push('/dashboard');
+};
+
+export const register = async (userData) => {
+  // userData é: { login: "...", senha: "...", role: "..." }
+  await AuthService.register(userData);
+  
+  const router = await getRouter();
+  router.push('/login');
+};
+
+export const logout = async () => {
+  localStorage.removeItem('user');
+  localStorage.removeItem('token');
+  
+  authState.value = { user: null, token: null, isAuthenticated: false };
+  
+  const router = await getRouter();
+  router.push('/login');
+};
+
+// Sincronização de Storage
+window.addEventListener('storage', (event) => {
+  if (event.key === 'token') {
+    const newToken = event.newValue;
+    token.value = newToken;
+    authState.value.token = newToken;
+    authState.value.isAuthenticated = !!newToken;
+  }
+  if (event.key === 'user') {
+    const newUser = getSafeUserFromStorage();
+    user.value = newUser;
+    authState.value.user = newUser;
+  }
 });

@@ -1,134 +1,141 @@
 <template>
   <div class="dashboard">
-    
-    <!-- 
-      MUDANÇA: O cabeçalho <header> que continha "Mural ComuniDesk" 
-      e o botão antigo foi completamente removido.
-    -->
+    <NavBar />
+    <main class="board-container">
+      <KanbanBoard
+        :columns="boardColumns"
+        @edit-post="handleEditPost"
+        @delete-post="handleDeletePost"
+      />
+    </main>
 
-    <!-- O Quadro Kanban continua a ser o elemento principal -->
-    <KanbanBoard 
-      @edit-post="handleEditPost"
-      @delete-post="handleDeletePost"
-    />
-    
-    <!-- O Modal (invisível até ser ativado) -->
+    <button class="fab-create-post" @click="openModal" title="Criar Novo Post">
+      +
+    </button>
+
     <PostForm
       v-if="isModalOpen"
-      :post-to-edit="currentPost"
+      :post-to-edit="postToEdit"
       @close="closeModal"
       @post-saved="onPostSaved"
     />
-
-    <!-- 
-      MUDANÇA: Adicionado o novo Botão Flutuante
-      Ele chama a mesma função @click="openCreateModal"
-    -->
-    <button class="btn-floating-add" @click="openCreateModal" title="Criar Novo Post">
-      +
-    </button>
   </div>
 </template>
 
 <script setup>
-/* eslint-disable no-undef */
-import { ref } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import NavBar from '@/components/common/NavBar.vue';
 import KanbanBoard from '@/components/board/KanbanBoard.vue';
 import PostForm from '@/components/forms/PostForm.vue';
-import { useBoardStore } from '@/store/board';
+import PostService from '@/services/PostService';
+import { boardStore } from '@/store/board.js';
 
-// NENHUMA MUDANÇA AQUI DENTRO!
-// A lógica permanece exatamente a mesma.
+const posts = boardStore.posts;
+const fetchPosts = boardStore.fetchPosts;
 
-const boardStore = useBoardStore();
 const isModalOpen = ref(false);
-const currentPost = ref(null);
+const postToEdit = ref(null);
 
-const openCreateModal = () => {
-  currentPost.value = null; 
+// Mapeia os posts para as colunas do Kanban
+const boardColumns = computed(() => {
+  const columns = {
+    'Aviso_Gerais': { id: 'Aviso_Gerais', name: 'Avisos', posts: [] },
+    'Eventos': { id: 'Eventos', name: 'Eventos', posts: [] },
+    'Trocas_Doações': { id: 'Trocas_Doações', name: 'Trocas/Doações', posts: [] },
+    'Achados_Perdidos': { id: 'Achados_Perdidos', name: 'Achados e Perdidos', posts: [] },
+    'Dicas_Recomendações': { id: 'Dicas_Recomendações', name: 'Dicas e Recomendações', posts: [] },
+  };
+
+  if (posts.value && Array.isArray(posts.value)) {
+    posts.value.forEach(post => {
+      // --- MUDANÇA: post.category ---
+      if (columns[post.category]) {
+        columns[post.category].posts.push(post);
+      }
+      // --- FIM DA MUDANÇA ---
+    });
+  }
+
+  return Object.values(columns);
+});
+
+// Abre o modal para criar (sem post)
+const openModal = () => {
+  postToEdit.value = null;
   isModalOpen.value = true;
 };
 
+// Fecha o modal e limpa a seleção
+const closeModal = () => {
+  isModalOpen.value = false;
+  postToEdit.value = null;
+};
+
+// Chamado quando o PostForm salva (cria ou edita)
+const onPostSaved = () => {
+  closeModal();
+  fetchPosts(); // Atualiza a lista de posts
+};
+
+// 1. AÇÃO DE EDITAR
 const handleEditPost = (post) => {
-  currentPost.value = post;
+  postToEdit.value = post;
   isModalOpen.value = true;
 };
 
+// 2. AÇÃO DE EXCLUIR
 const handleDeletePost = async (postId) => {
-  // Adiciona uma confirmação antes de excluir
-  if (window.confirm("Tem a certeza que deseja excluir este post?")) {
+  if (window.confirm('Tem certeza que deseja excluir este post?')) {
     try {
-      await boardStore.deletePost(postId);
+      await PostService.deletePost(postId);
+      fetchPosts(); // Atualiza a lista após excluir
     } catch (error) {
       console.error("Erro ao excluir o post:", error);
+      alert('Não foi possível excluir o post.');
     }
   }
 };
 
-const closeModal = () => {
-  isModalOpen.value = false;
-  currentPost.value = null;
-};
-
-const onPostSaved = async () => {
-  closeModal();
-  try {
-    await boardStore.fetchPosts();
-  } catch (error) {
-    console.error("Erro ao buscar posts após salvar:", error);
-  }
-};
+// Carrega os posts quando o componente é montado
+onMounted(() => {
+  fetchPosts();
+});
 </script>
 
 <style scoped>
+/* Estilos Inalterados */
 .dashboard {
-  /* MUDANÇA: Adicionado 'position: relative' para que o botão flutuante 
-    (se usássemos position: absolute) ficasse contido aqui.
-    Mas para 'position: fixed', ele fica relativo à janela.
-    Vamos deixar o .dashboard simples.
-  */
-  width: 100%;
-}
-
-/* MUDANÇA: Os estilos .dashboard-header e .btn-new-post foram removidos.
-*/
-
-/* MUDANÇA: Adicionados estilos para o novo Botão Flutuante (FAB)
-*/
-.btn-floating-add {
-  position: fixed; /* Fixa o botão na janela de visualização */
-  bottom: 2rem; /* 32px de baixo */
-  right: 2rem; /* 32px da direita */
-  
-  width: 60px;   /* Botão circular */
-  height: 60px;
-  border-radius: 50%;
-  
-  background-color: #28a745; /* Verde (o mesmo do botão antigo) */
-  color: white;
-  
-  border: none;
-  cursor: pointer;
-  
-  /* Sombra para dar o efeito "flutuante" */
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  
-  /* Centraliza o "+" */
   display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  font-size: 2.5rem; /* Tamanho do "+" */
-  font-weight: 300;
-  line-height: 1; /* Ajusta o alinhamento vertical do + */
-  
-  z-index: 100; /* Garante que fica por cima do quadro */
-  
-  transition: transform 0.2s ease-out;
+  flex-direction: column;
+  height: 100vh;
+  position: relative;
 }
-
-.btn-floating-add:hover {
-  transform: scale(1.05); /* Efeito de zoom ao passar o rato */
-  background-color: #218838; /* Um pouco mais escuro */
+.board-container {
+  flex: 1;
+  overflow: hidden; 
+  background-color: #f9fafb; 
+}
+.fab-create-post {
+  position: fixed; 
+  bottom: 2rem;
+  right: 2rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: #3b82f6; 
+  color: white;
+  border: none;
+  font-size: 2rem; 
+  font-weight: 300;
+  line-height: 56px; 
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  z-index: 999; 
+}
+.fab-create-post:hover {
+  background-color: #2563eb; 
+  transform: scale(1.05);
 }
 </style>

@@ -1,89 +1,94 @@
 <template>
   <nav class="navbar">
-    <div class="navbar-container">
-      <div class="navbar-brand">
-        <!-- Link para o Dashboard (página inicial) -->
-        <router-link to="/" class="brand-link">
-          <!-- Pode substituir por um <img src="@/assets/logo.png" /> -->
-          <strong>ComuniDesk</strong>
-        </router-link>
-      </div>
+    <div class="navbar-left">
+      <img src="@/assets/logo.png" alt="Comunidesk Logo" class="logo" />
+      <span class="navbar-title">Comunidesk</span>
+    </div>
+    
+    <div class="navbar-right">
+      <!-- Mostra o nome do utilizador se ele estiver logado -->
+      <span v-if="userDisplay" class="username">
+        <!-- 
+          Agora que 'userDisplay' vai mostrar o 'login' (ex: "felipe123"),
+          esta saudação faz sentido.
+        -->
+        Olá, {{ userDisplay }}
+      </span>
       
-      <!-- Menu do Utilizador -->
-      <div class="navbar-menu">
-        <div v-if="user" class="navbar-user">
-          <span class="user-greeting">Olá, {{ user.nome }}</span>
-          
-          <!-- Botão de Logout -->
-          <button @click="handleLogout" class="btn-logout">
-            Sair
-          </button>
-        </div>
-      </div>
+      <!-- Botão "Sair" (chama a função logout) -->
+      <button class="btn-logout" @click="handleLogout">
+        Sair
+      </button>
     </div>
   </nav>
 </template>
 
 <script setup>
+/* global defineEmits */
 import { computed } from 'vue';
-import { useAuthStore } from '@/store/auth';
-import { useRouter } from 'vue-router';
+import { authState, logout } from '@/store/auth.js';
 
-const authStore = useAuthStore();
-const router = useRouter();
+defineEmits([]);
 
-// Busca o utilizador logado diretamente do store
-const user = computed(() => authStore.user);
+// Usamos 'computed' para obter o nome de login de forma segura
+const userDisplay = computed(() => {
+  // --- MUDANÇA ---
+  // O seu backend não suporta 'nome'.
+  // O nosso novo 'store/auth.js' guarda o 'login' do utilizador.
+  // Vamos usar o 'login' como nome de exibição.
+  return authState.value.user?.login;
+  // --- FIM DA MUDANÇA ---
+});
 
-// Função para fazer logout
+// Função que é chamada quando o botão "Sair" é clicado
 const handleLogout = () => {
-  authStore.logout(); // Limpa o token e o utilizador do Pinia/localStorage
-  router.push({ name: 'Login' }); // Redireciona para a página de login
+  logout(); // Chama a função importada
 };
 </script>
 
 <style scoped>
 .navbar {
-  background-color: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 0.75rem 2rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-.navbar-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 0.75rem 1.5rem;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
 }
-.brand-link {
-  text-decoration: none;
-  color: #333;
-  font-size: 1.5rem;
-}
-.navbar-menu {
+
+.navbar-left {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
 }
-.navbar-user {
+
+.logo {
+  height: 32px;
+}
+
+.navbar-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.navbar-right {
   display: flex;
   align-items: center;
   gap: 1rem;
 }
-.user-greeting {
+
+.username {
   font-size: 0.9rem;
   color: #555;
 }
+
 .btn-logout {
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1rem;
+  background-color: #f0f0f0;
+  color: #333;
+  border: 1px solid #ccc;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.9rem;
-}
-.btn-logout:hover {
-  background-color: #c82333;
 }
 </style>

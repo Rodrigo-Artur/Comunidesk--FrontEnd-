@@ -1,31 +1,33 @@
 <template>
-  <div class="login-container">
-    <form class="login-form" @submit.prevent="handleRegister">
-      <h2>Registo - ComuniDesk</h2>
+  <div class="auth-container">
+    <form class="auth-form" @submit.prevent="handleRegister">
+      <img src="@/assets/logo.png" alt="Logo" class="logo" />
+      <h2>Criar Conta</h2>
       
-      <div class="form-group">
-        <label for="name">Nome de Exibição</label>
-        <input type="text" id="name" v-model="name" required />
-      </div>
+      <!-- Campos 'nome' e 'email' REMOVIDOS para bater com o backend -->
 
+      <!-- Campo de Login -->
       <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" v-model="email" required />
+        <label for="login">Usuário (Login)</label>
+        <input type="text" id="login" v-model="form.login" required />
       </div>
       
+      <!-- Campo de Password (corrigido para 'senha') -->
       <div class="form-group">
-        <label for="password">Palavra-passe</label>
-        <input type="password" id="password" v-model="password" required />
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" v-model="form.senha" required />
       </div>
       
+      <!-- Mensagem de Erro -->
       <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
-      <p v-if="successMessage" class="success-message">{{ successMessage }}</p>
       
+      <!-- Botão de Submissão -->
       <button type="submit" class="btn-submit" :disabled="isLoading">
         {{ isLoading ? 'A registar...' : 'Registar' }}
       </button>
       
-      <p class="redirect-link">
+      <!-- Link para Login -->
+      <p class="switch-auth">
         Já tem conta? <router-link to="/login">Faça login</router-link>
       </p>
     </form>
@@ -34,53 +36,27 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import AuthService from '@/services/AuthService';
+import { register } from '@/store/auth.js';
 
-const name = ref('');
-const email = ref('');
-const password = ref('');
+const form = ref({
+  // Campos 'nome' e 'email' REMOVIDOS
+  login: '',
+  senha: '',
+  role: 'USER', // Campo obrigatório para o backend
+});
+
 const isLoading = ref(false);
 const errorMessage = ref(null);
-const successMessage = ref(null);
-
-const router = useRouter();
 
 const handleRegister = async () => {
   isLoading.value = true;
   errorMessage.value = null;
-  successMessage.value = null;
-
   try {
-    const userData = {
-      nome: name.value,
-      email: email.value,
-      senha: password.value,
-      login: email.value,
-      role: "USER",
-    };
-    // --- FIM DA MUDANÇA ---
-    
-    // O AuthService (Arquivo 2) já está a apontar para o backend real
-    // e o SecurityConfig (backend) já permite esta chamada.
-    await AuthService.register(userData);
-    
-    successMessage.value = 'Registo efetuado com sucesso! Redirecionando para o login...';
-    
-    setTimeout(() => {
-      router.push({ name: 'Login' });
-    }, 2000);
-
+    // Agora o form.value contém { login, senha, role }
+    await register(form.value);
+    // O 'store/auth.js' já trata do redirecionamento para /login
   } catch (error) {
-    console.error('Erro no registo:', error);
-    // Tenta ler a mensagem de erro específica do backend, se existir
-    if (error.response && error.response.data) {
-      errorMessage.value = error.response.data.message || 'Erro ao registar. Verifique os dados.';
-    } else if (error.message.includes('Network Error')) {
-      errorMessage.value = 'Não foi possível comunicar com o servidor.';
-    } else {
-      errorMessage.value = 'Ocorreu um erro desconhecido.';
-    }
+    errorMessage.value = error.response?.data?.message || 'Erro ao criar a conta.';
   } finally {
     isLoading.value = false;
   }
@@ -88,21 +64,31 @@ const handleRegister = async () => {
 </script>
 
 <style scoped>
-/* Estilos consistentes com a página de Login */
-.login-container {
+/* Estilos completos da página de Registo */
+.auth-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: #f0f2f5;
+  background-color: #f3f4f6;
 }
-.login-form {
+.auth-form {
   background: white;
-  padding: 2rem;
+  padding: 2.5rem;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 400px;
+}
+.logo {
+  display: block;
+  margin: 0 auto 1.5rem;
+  height: 50px;
+}
+.auth-form h2 {
+  text-align: center;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 .form-group {
   margin-bottom: 1rem;
@@ -116,16 +102,35 @@ const handleRegister = async () => {
   padding: 0.75rem;
   border: 1px solid #ccc;
   border-radius: 4px;
-  box-sizing: border-box; 
+  box-sizing: border-box; /* Garante que o padding não afete a largura */
 }
-.redirect-link {
+.btn-submit {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-top: 1rem;
+}
+.btn-submit:disabled {
+  background-color: #9ca3af;
+}
+.error-message {
+  color: #ef4444;
+  font-size: 0.9rem;
   text-align: center;
   margin-top: 1rem;
 }
-.success-message {
-  color: green;
-  margin-bottom: 1rem;
+.switch-auth {
   text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
 }
-/* .btn-submit e .error-message vêm do main.css */
+.switch-auth a {
+  color: #3b82f6;
+  text-decoration: none;
+}
 </style>

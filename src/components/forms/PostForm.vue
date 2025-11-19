@@ -6,27 +6,32 @@
       
       <form @submit.prevent="handleSubmit">
         <div class="form-group">
+          <!-- MUDANÇA: 'title' -->
           <label for="title">Título</label>
           <input type="text" id="title" v-model="form.title" required />
         </div>
         
         <div class="form-group">
+          <!-- MUDANÇA: 'description' -->
           <label for="description">Descrição</label>
           <textarea id="description" v-model="form.description" rows="5" required></textarea>
         </div>
         
         <div class="form-group">
+          <!-- MUDANÇA: 'category' -->
           <label for="category">Categoria</label>
+          <!-- 
+            MUDANÇA CRÍTICA (Erro do Enum "EVENTO"):
+            Os valores (value="") devem corresponder EXATAMENTE ao Enum do backend:
+            [Achados_Perdidos, Dicas_Recomendações, Eventos, Trocas_Doações, Aviso_Gerais]
+          -->
           <select id="category" v-model="form.category" required>
-            
-            <!-- Os valores aqui já estavam corretos (baseados no seu código) -->
             <option value="Aviso_Gerais">Aviso</option>
-            <option value="EVENTO">Eventos</option>
-            <option value="TROCA">Trocas/Doações</option>
-            <option value="ACHADO_PERDIDO">Achados e Perdidos</option>
-            <option value="RECOMENDACAO">Dicas e Recomendações</option>
-            <option value="ARTIGO">Artigos</option>
-            
+            <option value="Eventos">Eventos</option> <!-- Corrigido de "EVENTO" -->
+            <option value="Trocas_Doações">Trocas/Doações</option> <!-- Corrigido de "TROCA" -->
+            <option value="Achados_Perdidos">Achados e Perdidos</option> <!-- Corrigido de "ACHADO_PERDIDO" -->
+            <option value="Dicas_Recomendações">Dicas e Recomendações</option> <!-- Corrigido de "RECOMENDACAO" -->
+            <!-- "ARTIGO" foi removido pois não existe no Enum do backend -->
           </select>
         </div>
         
@@ -51,9 +56,9 @@
 <script setup>
 /* global defineProps, defineEmits */
 import { ref, watch, onMounted } from 'vue';
-import PostService from '@/services/PostService'; // O Arquivo 3
+import PostService from '@/services/PostService';
+import { authState } from '@/store/auth.js';
 
-// Props: 'postToEdit' será null para "criar" e um objeto para "editar"
 const props = defineProps({
   postToEdit: {
     type: Object,
@@ -61,50 +66,43 @@ const props = defineProps({
   },
 });
 
-// Emits: eventos que o componente "dispara" para o pai
 const emit = defineEmits(['close', 'post-saved']);
 
 const isLoading = ref(false);
 const errorMessage = ref(null);
-
-// O 'isEditing' é reativo e depende da prop
 const isEditing = ref(false);
 
 // O objeto do formulário
 const form = ref({
   id: null,
+  // --- MUDANÇA ---
   title: '',
   description: '',
-  // --- CORREÇÃO (Linha 1) ---
-  // O valor padrão deve ser "Aviso_Gerais" para bater com o Enum do backend
-  // e com a <option> no template.
-  category: 'Aviso_Gerais', 
+  category: 'Aviso_Gerais',
+  // --- FIM DA MUDANÇA ---
   tags: '', 
 });
 
-// Esta função preenche o formulário quando a prop 'postToEdit' é recebida
+// Preenche o formulário
 const setFormFromProps = () => {
   if (props.postToEdit) {
     isEditing.value = true;
     form.value.id = props.postToEdit.id;
+    // --- MUDANÇA ---
     form.value.title = props.postToEdit.title;
     form.value.description = props.postToEdit.description;
-    form.value.category = props.postToEdit.category; // Ex: "Aviso_Gerais"
-    // Garante que 'tags' é um array antes de dar 'join'
+    form.value.category = props.postToEdit.category;
+    // --- FIM DA MUDANÇA ---
     form.value.tags = Array.isArray(props.postToEdit.tags) ? props.postToEdit.tags.join(', ') : '';
   } else {
     isEditing.value = false;
-    // Reseta o formulário
-    // --- CORREÇÃO (Linha 2) ---
-    // O reset do formulário também deve usar o valor padrão correto.
+    // --- MUDANÇA ---
     form.value = { id: null, title: '', description: '', category: 'Aviso_Gerais', tags: '' };
+    // --- FIM DA MUDANÇA ---
   }
 };
 
-// Observa mudanças na prop (caso o modal seja reutilizado)
 watch(() => props.postToEdit, setFormFromProps);
-
-// Preenche o formulário quando o componente é montado
 onMounted(setFormFromProps);
 
 const handleSubmit = async () => {
@@ -112,29 +110,37 @@ const handleSubmit = async () => {
   errorMessage.value = null;
 
   try {
+    // Dados base do post
     const postData = {
+      // --- MUDANÇA ---
       title: form.value.title,
       description: form.value.description,
-      category: form.value.category, // O 'v-model' agora envia o valor correto (ex: "Aviso_Gerais")
-      // Converte a string de tags num array
-      tags: form.value.tags.split(',').map(tag => tag.trim()).filter(tag => tag), 
+      category: form.value.category,
+      // --- FIM DA MUDANÇA ---
+      tags: form.value.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+      // --- MUDANÇA ---
+      user: authState.value.user // O backend espera 'user'
+      // --- FIM DA MUDANÇA ---
     };
 
     if (isEditing.value) {
       // --- MODO EDIÇÃO ---
-      await PostService.updatePost(form.value.id, postData);
+      const updateData = {
+        ...postData,
+        // --- MUDANÇA ---
+        user: props.postToEdit.user // Garante que o autor original (user) seja mantido
+        // --- FIM DA MUDANÇA ---
+      };
+      await PostService.updatePost(form.value.id, updateData);
     } else {
       // --- MODO CRIAÇÃO ---
       await PostService.createPost(postData);
     }
     
-    // Sucesso!
-    // Avisa o componente-pai (DashboardView) para fechar o modal
     emit('post-saved');
     
   } catch (error) {
     console.error("Erro ao guardar o post:", error);
-    // Tenta ler a mensagem de erro específica do backend, se existir
     if (error.response && error.response.data && error.response.data.message) {
       errorMessage.value = error.response.data.message;
     } else {
@@ -151,6 +157,7 @@ const close = () => {
 </script>
 
 <style scoped>
+/* Estilos inalterados */
 .modal-overlay {
   position: fixed;
   top: 0;
