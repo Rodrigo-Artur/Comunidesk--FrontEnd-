@@ -1,37 +1,28 @@
 <template>
-  <!-- O "overlay" escuro do modal -->
   <div class="modal-overlay" @click.self="close">
     <div class="modal-content">
       <h3>{{ isEditing ? 'Editar Post' : 'Criar Novo Post' }}</h3>
       
       <form @submit.prevent="handleSubmit">
         <div class="form-group">
-          <!-- MUDANÇA: 'title' -->
           <label for="title">Título</label>
           <input type="text" id="title" v-model="form.title" required />
         </div>
         
         <div class="form-group">
-          <!-- MUDANÇA: 'description' -->
           <label for="description">Descrição</label>
           <textarea id="description" v-model="form.description" rows="5" required></textarea>
         </div>
         
         <div class="form-group">
-          <!-- MUDANÇA: 'category' -->
           <label for="category">Categoria</label>
-          <!-- 
-            MUDANÇA CRÍTICA (Erro do Enum "EVENTO"):
-            Os valores (value="") devem corresponder EXATAMENTE ao Enum do backend:
-            [Achados_Perdidos, Dicas_Recomendações, Eventos, Trocas_Doações, Aviso_Gerais]
-          -->
           <select id="category" v-model="form.category" required>
-            <option value="Aviso_Gerais">Aviso</option>
-            <option value="Eventos">Eventos</option> <!-- Corrigido de "EVENTO" -->
-            <option value="Trocas_Doações">Trocas/Doações</option> <!-- Corrigido de "TROCA" -->
-            <option value="Achados_Perdidos">Achados e Perdidos</option> <!-- Corrigido de "ACHADO_PERDIDO" -->
-            <option value="Dicas_Recomendações">Dicas e Recomendações</option> <!-- Corrigido de "RECOMENDACAO" -->
-            <!-- "ARTIGO" foi removido pois não existe no Enum do backend -->
+            <option value="AVISOS">Avisos Gerais</option>
+            <option value="EVENTOS">Eventos</option>
+            <option value="TROCAS">Trocas/Doações</option>
+            <option value="PERDIDOS">Achados e Perdidos</option>
+            <option value="DICAS">Dicas e Recomendações</option>
+            <option value="ARTIGO">Artigos</option>
           </select>
         </div>
         
@@ -54,10 +45,9 @@
 </template>
 
 <script setup>
-/* global defineProps, defineEmits */
+/* global defineProps, defineEmits */ 
 import { ref, watch, onMounted } from 'vue';
 import PostService from '@/services/PostService';
-import { authState } from '@/store/auth.js';
 
 const props = defineProps({
   postToEdit: {
@@ -72,33 +62,25 @@ const isLoading = ref(false);
 const errorMessage = ref(null);
 const isEditing = ref(false);
 
-// O objeto do formulário
 const form = ref({
   id: null,
-  // --- MUDANÇA ---
   title: '',
   description: '',
-  category: 'Aviso_Gerais',
-  // --- FIM DA MUDANÇA ---
+  category: 'AVISOS',
   tags: '', 
 });
 
-// Preenche o formulário
 const setFormFromProps = () => {
   if (props.postToEdit) {
     isEditing.value = true;
     form.value.id = props.postToEdit.id;
-    // --- MUDANÇA ---
     form.value.title = props.postToEdit.title;
     form.value.description = props.postToEdit.description;
     form.value.category = props.postToEdit.category;
-    // --- FIM DA MUDANÇA ---
     form.value.tags = Array.isArray(props.postToEdit.tags) ? props.postToEdit.tags.join(', ') : '';
   } else {
     isEditing.value = false;
-    // --- MUDANÇA ---
-    form.value = { id: null, title: '', description: '', category: 'Aviso_Gerais', tags: '' };
-    // --- FIM DA MUDANÇA ---
+    form.value = { id: null, title: '', description: '', category: 'AVISOS', tags: '' };
   }
 };
 
@@ -110,30 +92,16 @@ const handleSubmit = async () => {
   errorMessage.value = null;
 
   try {
-    // Dados base do post
     const postData = {
-      // --- MUDANÇA ---
       title: form.value.title,
       description: form.value.description,
       category: form.value.category,
-      // --- FIM DA MUDANÇA ---
-      tags: form.value.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-      // --- MUDANÇA ---
-      user: authState.value.user // O backend espera 'user'
-      // --- FIM DA MUDANÇA ---
+      tags: form.value.tags.split(',').map(tag => tag.trim()).filter(tag => tag), 
     };
 
     if (isEditing.value) {
-      // --- MODO EDIÇÃO ---
-      const updateData = {
-        ...postData,
-        // --- MUDANÇA ---
-        user: props.postToEdit.user // Garante que o autor original (user) seja mantido
-        // --- FIM DA MUDANÇA ---
-      };
-      await PostService.updatePost(form.value.id, updateData);
+      await PostService.updatePost(form.value.id, postData);
     } else {
-      // --- MODO CRIAÇÃO ---
       await PostService.createPost(postData);
     }
     
@@ -141,11 +109,7 @@ const handleSubmit = async () => {
     
   } catch (error) {
     console.error("Erro ao guardar o post:", error);
-    if (error.response && error.response.data && error.response.data.message) {
-      errorMessage.value = error.response.data.message;
-    } else {
-      errorMessage.value = 'Não foi possível se comunicar com o servidor.';
-    }
+    errorMessage.value = error.response?.data?.message || error.response?.data || "Não foi possível guardar o post.";
   } finally {
     isLoading.value = false;
   }
@@ -157,7 +121,6 @@ const close = () => {
 </script>
 
 <style scoped>
-/* Estilos inalterados */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -208,5 +171,5 @@ const close = () => {
   border-radius: 4px;
   cursor: pointer;
 }
-/* .btn-submit e .error-message vêm do main.css */
+/* .error-message vem do CSS global */
 </style>

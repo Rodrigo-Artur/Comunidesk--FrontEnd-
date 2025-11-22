@@ -1,18 +1,38 @@
 <template>
-  <!-- O App.vue deve apenas renderizar o router-view. -->
-  <!-- A lógica de autenticação é tratada pelo router/index.js -->
-  <router-view/>
+  <div id="app-layout">
+    
+    <!-- AQUI ESTÁ A BARRA SUPERIOR (NAVBAR) -->
+    <!-- Ela contém o "ComuniDesk", o Nome do Usuário e o botão Sair -->
+    <NavBar v-if="isAuthenticated" />
+    
+    <main class="main-content">
+      <router-view />
+    </main>
+    
+  </div>
 </template>
 
-<!-- 
-  --- CORREÇÃO ---
-  O erro (useAuthStore not a function) estava a ser causado por
-  um <script setup> aqui. Esta versão limpa remove
-  esse script desnecessário, resolvendo o erro.
--->
 <script setup>
-// Não é necessário importar o authStore ou qualquer outra coisa aqui.
-// O router/index.js (que já corrigimos) faz a guarda das rotas.
+import { computed } from 'vue';
+// IMPORTANTE: Importar com chaves { } porque é uma exportação nomeada
+import { useAuthStore } from '@/store/auth';
+import NavBar from '@/components/common/NavBar.vue';
+
+const authStore = useAuthStore();
+
+// Propriedade reativa que controla a visibilidade da barra
+const isAuthenticated = computed(() => authStore.isAuthenticated);
 </script>
 
-<style src="@/assets/main.css"></style>
+<style scoped>
+#app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  background-color: #f0f2f5; /* Fundo cinza claro para todo o site */
+}
+</style>

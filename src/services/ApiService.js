@@ -1,33 +1,44 @@
 import axios from 'axios';
-// import { authState } from '@/store/auth'; // <-- REMOVIDO para quebrar o ciclo estático
+// IMPORTANTE: Não importamos useAuthStore aqui para evitar erros de inicialização cíclica
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api', // A tua porta do backend
+  baseURL: 'http://localhost:8080/api',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Interceptor para adicionar o token JWT a CADA requisição
-apiClient.interceptors.request.use(
-  async (config) => {
-    // --- CORREÇÃO ---
-    // Importamos o store dinamicamente (APENAS quando necessário)
-    // Isso não cria um ciclo de dependência na inicialização.
-    const { authState } = await import('@/store/auth.js');
-    
-    const token = authState.value.token;
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+export const setupAxiosInterceptors = () => {
+  apiClient.interceptors.request.use(
+    (config) => {
+      // CORREÇÃO: Ler diretamente do localStorage.
+      // Isso funciona sempre, mesmo que o Pinia ainda não esteja pronto.
+      const token = localStorage.getItem('token');
+      
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
     }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+  );
 
-// O interceptor de resposta (para 401/logout) foi removido
-// porque ele completava o ciclo de dependência.
+  apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      // Se der erro 401 (Não autorizado/Token expirado)
+      if (error.response && error.response.status === 401) {
+        // Limpa os dados
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        // Força recarregamento para ir para login
+        window.location.reload(); 
+      }
+      return Promise.reject(error);
+    }
+  );
+};
 
 export default apiClient;

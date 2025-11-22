@@ -1,53 +1,47 @@
 import { createRouter, createWebHistory } from 'vue-router'
-// --- REMOVER TODAS AS IMPORTAÇÕES ESTÁTICAS DE VIEWS ---
-// import DashboardView from '../views/DashboardView.vue'
-// import LoginView from '../views/LoginView.vue'
-// import RegisterView from '../views/RegisterView.vue'
+// Importação correta com { }
+import { useAuthStore } from '@/store/auth' 
+import DashboardView from '../views/DashboardView.vue'
+import LoginView from '../views/LoginView.vue'
+import RegisterView from '../views/RegisterView.vue'
 
 const routes = [
   {
     path: '/',
-    redirect: '/dashboard'
-  },
-  {
-    path: '/dashboard',
     name: 'Dashboard',
-    // Usar importação dinâmica (lazy-loading)
-    component: () => import('../views/DashboardView.vue'),
+    component: DashboardView,
     meta: { requiresAuth: true }
   },
   {
     path: '/login',
     name: 'Login',
-    // --- CORREÇÃO ---
-    // Usar importação dinâmica (lazy-loading)
-    component: () => import('../views/LoginView.vue')
+    component: LoginView,
+    meta: { requiresGuest: true }
   },
   {
     path: '/register',
     name: 'Register',
-    // --- CORREÇÃO ---
-    // Usar importação dinâmica (lazy-loading)
-    component: () => import('../views/RegisterView.vue')
-  }
-]
+    component: RegisterView,
+    meta: { requiresGuest: true }
+  },
+];
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
-  routes
-})
+  history: createWebHistory(),
+  routes,
+});
 
 router.beforeEach((to, from, next) => {
-  // A sua lógica de guarda (verificando o localStorage) está correta
-  // e não causa o ciclo.
-  const token = localStorage.getItem('token');
-  const isAuthenticated = !!token; 
-
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    next('/login');
+  // Inicializa a store DENTRO do guard para evitar erros do Pinia
+  const authStore = useAuthStore();
+  
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    next({ name: 'Login' });
+  } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
+    next({ name: 'Dashboard' });
   } else {
     next();
   }
-})
+});
 
-export default router
+export default router;

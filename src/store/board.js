@@ -1,39 +1,77 @@
-import { ref } from 'vue';
-import PostService from '@/services/PostService';
-// import { authState } from './auth'; // <-- REMOVIDA (Esta era a causa do ciclo)
+import { defineStore } from 'pinia'
+import PostService from '@/services/PostService'
 
-// Estado reativo para os posts
-const posts = ref([]);
+const categoryMap = {
+  'AVISOS': 'avisos',
+  'EVENTOS': 'eventos',
+  'TROCAS': 'trocas',
+  'PERDIDOS': 'perdidos',
+  'DICAS': 'dicas',
+  'ARTIGO': 'avisos'
+};
 
-// Função para buscar posts
-const fetchPosts = async () => {
-  // --- VERIFICAÇÃO REMOVIDA ---
-  // A verificação 'if (!authState.value.isAuthenticated)' foi removida
-  // para quebrar o ciclo de dependência.
+// Função auxiliar para gerar categorias limpas
+const getInitialCategories = () => [
+  { id: 'avisos', title: 'Avisos Gerais', posts: [] },
+  { id: 'eventos', title: 'Eventos', posts: [] },
+  { id: 'trocas', title: 'Trocas/Doações', posts: [] },
+  { id: 'perdidos', title: 'Achados e Perdidos', posts: [] },
+  { id: 'dicas', title: 'Dicas e Recomendações', posts: [] },
+];
 
-  try {
-    // O ApiService.js (usado pelo PostService) já adiciona o token.
-    // Se o token for inválido, o backend rejeitará a chamada.
-    const response = await PostService.getAllPosts();
-    posts.value = response.data; 
-  } catch (error) {
-    console.error('Erro ao buscar posts:', error);
-    posts.value = []; // Limpa os posts em caso de erro
+export const useBoardStore = defineStore('board', {
+  state: () => ({
+    categories: getInitialCategories(),
+    isLoading: false,
+  }),
+  actions: {
+    async fetchPosts() {
+      this.isLoading = true;
+      try {
+        const response = await PostService.getAllPosts();
+        
+        console.log("Resposta do Backend (fetchPosts):", response);
 
-    // --- LÓGICA DE SEGURANÇA ADICIONADA ---
-    // Se o erro for 401 (Não Autorizado) ou 403 (Proibido),
-    // o token é inválido ou expirou, então fazemos logout.
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      console.warn('Autorização falhou. A fazer logout.');
-      // Importamos dinamicamente o auth.js APENAS aqui
-      const { logout } = await import('./auth.js');
-      logout();
+        // Reinicia as categorias
+        const newCategories = getInitialCategories();
+        
+        const posts = (response && response.data && Array.isArray(response.data)) ? response.data : [];
+        
+        posts.forEach(post => {
+          if (!post) return; // Ignora posts nulos
+
+          const backendCategory = post.category || 'AVISOS'; 
+          const targetId = categoryMap[backendCategory];
+          
+          if (targetId) {
+            const category = newCategories.find(c => c.id === targetId);
+            
+            // AQUI ESTAVA O PERIGO: Se category for undefined, category.posts quebra
+            if (category && category.posts) {
+              category.posts.push(post);
+            } else {
+               console.warn(`Categoria alvo encontrada (${targetId}), mas objeto de categoria inválido no frontend.`);
+            }
+          } else {
+            console.warn(`Categoria desconhecida do backend: ${post.category}`);
+          }
+        });
+        
+        this.categories = newCategories;
+
+      } catch (error) {
+        console.error("Erro ao buscar posts:", error);
+        if (error.response && error.response.status === 403) {
+             console.error("Autorização falhou (403).");
+        }
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    
+    async deletePost(postId) {
+        await PostService.deletePost(postId);
+        await this.fetchPosts();
     }
-  }
-};
-
-// Exportamos o estado e as ações como um objeto
-export const boardStore = {
-  posts,
-  fetchPosts,
-};
+  },
+});
