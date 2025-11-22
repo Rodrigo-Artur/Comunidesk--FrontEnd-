@@ -22,7 +22,6 @@
             <option value="TROCAS">Trocas/Doações</option>
             <option value="PERDIDOS">Achados e Perdidos</option>
             <option value="DICAS">Dicas e Recomendações</option>
-            <option value="ARTIGO">Artigos</option>
           </select>
         </div>
         
