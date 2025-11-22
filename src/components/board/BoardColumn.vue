@@ -1,57 +1,41 @@
 <template>
   <div class="column">
-    <!-- Proteção: Só renderiza o título se category existir -->
+    <!-- Título da Coluna -->
     <h3 class="column-title">{{ category?.title || 'Sem Título' }}</h3>
     
-    <draggable
-      class="kanban-list"
-      :list="category?.posts || []"
-      group="posts"
-      itemKey="id"
-      @change="onDragChange"
-      :data-category-id="category?.id"
-    >
-      <template #item="{ element: post }">
-        <PostCard 
-          v-if="post"
-          :post="post" 
-          @edit="onEditPost"
-          @delete="onDeletePost"
-        />
-      </template>
-    </draggable>
+    <!-- Lista de Posts (Sem Drag-and-Drop) -->
+    <div class="kanban-list">
+      <PostCard 
+        v-for="post in category?.posts || []"
+        :key="post.id"
+        :post="post" 
+        @edit="onEditPost"
+        @delete="onDeletePost"
+      />
+      
+      <!-- Mensagem opcional se a coluna estiver vazia -->
+      <div v-if="!category?.posts || category.posts.length === 0" class="empty-message">
+        Sem posts
+      </div>
+    </div>
     
   </div>
 </template>
 
 <script setup>
-import draggable from 'vuedraggable';
+/* global defineProps, defineEmits */
 import PostCard from './PostCard.vue';
-import { useBoardStore } from '@/store/board';
 
-// eslint-disable-next-line no-undef
-const props = defineProps({
-  // O nome da prop aqui TEM de bater com o que é passado no KanbanBoard (:category="...")
+// CORREÇÃO: Removemos 'const props =' porque não estamos usando 'props' no script.
+// O defineProps ainda funciona e disponibiliza 'category' para o template.
+defineProps({
   category: {
     type: Object,
     required: true,
   },
 });
 
-// eslint-disable-next-line no-undef
 const emit = defineEmits(['edit-post', 'delete-post']);
-
-// eslint-disable-next-line no-unused-vars
-const boardStore = useBoardStore();
-
-const onDragChange = (event) => {
-  if (event.added) {
-    const postId = event.added.element.id;
-    const newCategory = props.category.id;
-    console.log(`Post ${postId} movido para ${newCategory}`);
-    // boardStore.movePost(...) // Futura implementação
-  }
-}
 
 const onEditPost = (post) => {
   emit('edit-post', post);
@@ -64,7 +48,7 @@ const onDeletePost = (postId) => {
 
 <style scoped>
 .column {
-  flex: 0 0 300px;
+  flex: 0 0 300px; /* Largura fixa da coluna */
   background-color: #e9e9e9;
   border-radius: 8px;
   padding: 1rem;
@@ -80,11 +64,18 @@ const onDeletePost = (postId) => {
   border-bottom: 2px solid #ccc;
 }
 .kanban-list {
-  min-height: 150px;
+  min-height: 100px;
   flex-grow: 1;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  overflow-y: auto; /* Permite scroll dentro da coluna se tiver muitos posts */
+  overflow-y: auto; /* Permite scroll se houver muitos posts */
+}
+.empty-message {
+  text-align: center;
+  color: #888;
+  font-style: italic;
+  margin-top: 1rem;
+  font-size: 0.9rem;
 }
 </style>
