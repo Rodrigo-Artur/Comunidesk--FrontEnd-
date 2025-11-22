@@ -1,20 +1,18 @@
 <template>
   <div class="column">
-    <!-- Título da Coluna -->
-    <h3 class="column-title">{{ category?.title || 'Sem Título' }}</h3>
+    <h3 class="column-title">{{ category ? category.title : 'Sem Título' }}</h3>
     
-    <!-- Lista de Posts (Sem Drag-and-Drop) -->
     <div class="kanban-list">
       <PostCard 
-        v-for="post in category?.posts || []"
+        v-for="post in (category && category.posts ? category.posts : [])"
         :key="post.id"
         :post="post" 
         @edit="onEditPost"
         @delete="onDeletePost"
+        @view="onViewPost" 
       />
       
-      <!-- Mensagem opcional se a coluna estiver vazia -->
-      <div v-if="!category?.posts || category.posts.length === 0" class="empty-message">
+      <div v-if="!category || !category.posts || category.posts.length === 0" class="empty-message">
         Sem posts
       </div>
     </div>
@@ -26,8 +24,6 @@
 /* global defineProps, defineEmits */
 import PostCard from './PostCard.vue';
 
-// CORREÇÃO: Removemos 'const props =' porque não estamos usando 'props' no script.
-// O defineProps ainda funciona e disponibiliza 'category' para o template.
 defineProps({
   category: {
     type: Object,
@@ -35,7 +31,8 @@ defineProps({
   },
 });
 
-const emit = defineEmits(['edit-post', 'delete-post']);
+// Adicionado 'view-post'
+const emit = defineEmits(['edit-post', 'delete-post', 'view-post']);
 
 const onEditPost = (post) => {
   emit('edit-post', post);
@@ -44,11 +41,17 @@ const onEditPost = (post) => {
 const onDeletePost = (postId) => {
   emit('delete-post', postId);
 };
+
+// Repassa o evento para cima
+const onViewPost = (post) => {
+  emit('view-post', post);
+};
 </script>
 
 <style scoped>
+/* ... (mesmo estilo de antes) ... */
 .column {
-  flex: 0 0 300px; /* Largura fixa da coluna */
+  flex: 0 0 300px;
   background-color: #e9e9e9;
   border-radius: 8px;
   padding: 1rem;
@@ -69,7 +72,7 @@ const onDeletePost = (postId) => {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  overflow-y: auto; /* Permite scroll se houver muitos posts */
+  overflow-y: auto;
 }
 .empty-message {
   text-align: center;

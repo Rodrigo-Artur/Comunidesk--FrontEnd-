@@ -4,17 +4,14 @@
       Carregando posts...
     </div>
     
-    <div class="board" v-else-if="boardStore.categories && boardStore.categories.length">
-      <!-- 
-         O :key DEVE ser único. category.id é o ideal.
-         Passamos :category="category". Isso deve bater com o defineProps no filho.
-      -->
+    <div class="board" v-else-if="boardStore.categories && boardStore.categories.length > 0">
       <BoardColumn
         v-for="category in boardStore.categories"
         :key="category.id"
-        :category="category"
+        :category="category" 
         @edit-post="onEdit"
         @delete-post="onDelete"
+        @view-post="onView"
       />
     </div>
     
@@ -25,17 +22,17 @@
 </template>
 
 <script setup>
+/* global defineEmits */ // <--- CORREÇÃO AQUI: Informa o ESLint
 import { onMounted } from 'vue';
 import { useBoardStore } from '@/store/board';
 import BoardColumn from './BoardColumn.vue';
 
 const boardStore = useBoardStore();
 
-// eslint-disable-next-line no-undef
-const emit = defineEmits(['edit-post', 'delete-post']);
+const emit = defineEmits(['edit-post', 'delete-post', 'view-post']);
 
 onMounted(() => {
-  // boardStore.fetchPosts(); // Já chamado no DashboardView
+  // boardStore.fetchPosts(); 
 });
 
 const onEdit = (post) => {
@@ -44,6 +41,10 @@ const onEdit = (post) => {
 
 const onDelete = (postId) => {
   emit('delete-post', postId);
+};
+
+const onView = (post) => {
+  emit('view-post', post);
 };
 </script>
 

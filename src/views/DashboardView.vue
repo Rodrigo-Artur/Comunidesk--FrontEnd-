@@ -1,15 +1,14 @@
 <template>
   <div class="dashboard">
     
-    <!-- O Quadro Kanban -->
-    <!-- Adicionamos v-if="boardStore.categories" para garantir que só renderiza se as categorias existirem -->
     <KanbanBoard 
       v-if="boardStore.categories"
       @edit-post="handleEditPost"
       @delete-post="handleDeletePost"
+      @view-post="handleViewPost"
     />
     
-    <!-- O Modal -->
+    <!-- Modal de Criar/Editar -->
     <PostForm
       v-if="isModalOpen"
       :post-to-edit="currentPost"
@@ -17,7 +16,13 @@
       @post-saved="onPostSaved"
     />
 
-    <!-- Botão Flutuante -->
+    <!-- NOVO: Modal de Detalhes -->
+    <PostDetailsModal
+      v-if="viewPostData"
+      :post="viewPostData"
+      @close="closeViewModal"
+    />
+
     <button class="btn-floating-add" @click="openCreateModal" title="Criar Novo Post">
       +
     </button>
@@ -25,16 +30,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'; // Adicionei onMounted
+import { ref, onMounted } from 'vue';
 import KanbanBoard from '@/components/board/KanbanBoard.vue';
 import PostForm from '@/components/forms/PostForm.vue';
+// Importa o novo componente
+import PostDetailsModal from '@/components/board/PostDetailsModal.vue';
 import { useBoardStore } from '@/store/board';
 
 const boardStore = useBoardStore();
 const isModalOpen = ref(false);
 const currentPost = ref(null);
 
-// Buscar posts ao montar o dashboard para garantir dados frescos
+// Estado para o modal de visualização
+const viewPostData = ref(null);
+
 onMounted(() => {
   boardStore.fetchPosts();
 });
@@ -49,12 +58,22 @@ const handleEditPost = (post) => {
   isModalOpen.value = true;
 };
 
+// Função chamada ao clicar no cartão
+const handleViewPost = (post) => {
+  viewPostData.value = post;
+};
+
+// Fecha o modal de visualização
+const closeViewModal = () => {
+  viewPostData.value = null;
+};
+
 const handleDeletePost = async (postId) => {
   if (window.confirm("Tem a certeza que deseja excluir este post?")) {
     try {
       await boardStore.deletePost(postId);
     } catch (error) {
-      console.error("Erro ao excluir o post:", error);
+      console.error("Erro ao excluir:", error);
     }
   }
 };
@@ -66,18 +85,13 @@ const closeModal = () => {
 
 const onPostSaved = async () => {
   closeModal();
-  try {
-    await boardStore.fetchPosts();
-  } catch (error) {
-    console.error("Erro ao buscar posts após salvar:", error);
-  }
+  await boardStore.fetchPosts();
 };
 </script>
 
 <style scoped>
 .dashboard {
   width: 100%;
-  /* Permite que o dashboard ocupe a altura total menos a navbar */
   height: calc(100vh - 60px); 
   position: relative;
 }
