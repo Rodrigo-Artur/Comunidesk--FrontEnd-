@@ -2,7 +2,7 @@
 
 Interface web moderna para o sistema de gestão de solicitações e tarefas comunitárias **Comunidesk**. Desenvolvido como uma **Single Page Application (SPA)**, este projeto foca em interatividade e experiência do usuário, utilizando um quadro estilo **Kanban** para organização visual.
 
-Este projeto consome a API REST do [Comunidesk Backend](LINK_DO_SEU_BACKEND_AQUI).
+Este projeto consome a API REST do [Comunidesk Backend](https://github.com/Rodrigo-Artur/comunideskback).
 
 ## 🚀 Tecnologias Utilizadas
 
