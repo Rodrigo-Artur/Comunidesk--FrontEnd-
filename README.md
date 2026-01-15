@@ -81,7 +81,7 @@ npm run lint: Executa o Linter para verificar e corrigir erros de código.
 Rodrigo Artur
 
 Projeto desenvolvido como parte do portfólio acadêmico em Análise e Desenvolvimento de Sistemas.
-
+```
 
 ### 💡 O que torna esse README bom para você:
 
