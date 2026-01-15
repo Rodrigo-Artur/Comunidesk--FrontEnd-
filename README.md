@@ -42,7 +42,7 @@ src/
 ├── services/        # Camada de integração com API (Axios)
 ├── store/           # Gerenciamento de estado (Pinia)
 └── views/           # Páginas principais (Login, Register, Dashboard)
-
+```
 
 🔧 Pré-requisitos
 Antes de começar, certifique-se de ter instalado:
@@ -77,8 +77,11 @@ npm run build: Compila a aplicação para produção na pasta dist/.
 
 npm run lint: Executa o Linter para verificar e corrigir erros de código.
 
+Autor 🤝
 
-```
+Rodrigo Artur
+
+[LinkedIn](https://www.linkedin.com/in/rodrigo-artur-508840336/)
 
 🤝 Autor
 Rodrigo Artur
