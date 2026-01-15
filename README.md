@@ -77,14 +77,10 @@ npm run build: Compila a aplicação para produção na pasta dist/.
 
 npm run lint: Executa o Linter para verificar e corrigir erros de código.
 
+
+```
+
 🤝 Autor
 Rodrigo Artur
 
 Projeto desenvolvido como parte do portfólio acadêmico em Análise e Desenvolvimento de Sistemas.
-```
-
-### 💡 O que torna esse README bom para você:
-
-1.  **Destaque Técnico:** Ele menciona explicitamente "Composition API" e "Pinia". Isso mostra para recrutadores que você não está usando o Vue.js antigo (Vue 2), mas sim a versão mais moderna e desejada pelo mercado.
-2.  **Link com o Backend:** Deixei claro que esse Front depende de um Back rodando na porta 8080 (o padrão do Spring Boot que vimos nos outros arquivos).
-3.  **Profissionalismo:** A estrutura de pastas e funcionalidades mostra que o projeto é organizado.
